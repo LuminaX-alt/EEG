@@ -1,0 +1,920 @@
+!pip install matplotlib pandas numpy scipy seaborn mne
+!pip install beautifulsoup4 requests wget
+!pip install h5py tables kaggle
+!pip install wfdb pyEDFlib
+import glob            # for file locations
+import pprint          # for pretty printing
+import re
+
+pp = pprint.PrettyPrinter()
+
+def file_list(folder_path, output=False):
+    # create an empty list
+    file_list = []
+    # for file name in the folder path...
+    for filename in glob.glob(folder_path):
+        # ... append it to the list
+        file_list.append(filename)
+        
+    # sort alphabetically
+    file_list.sort()
+    
+    # Output
+    if output:
+        print(str(len(file_list)) + " files found")
+        pp.pprint(file_list)
+    
+    return file_list
+  import sys
+import os
+from bs4 import BeautifulSoup
+import requests
+import re
+import wget
+import zipfile
+
+
+def find_files(url):
+    # get a soup of the directory url
+    soup = BeautifulSoup(requests.get(url).text, features="html.parser")
+
+    # make a list of all the links in the url
+    hrefs_list = []
+    for link in soup.find_all('a'):
+        hrefs_list.append(link.get('href'))
+
+    return hrefs_list
+    
+    
+def download_file(download_file_url, file_dir, output=False):
+    if output:
+        # print it is downloading
+        print('Downloading: '+ download_file_url)
+    # download the file to the directory
+    wget.download(download_file_url, file_dir)
+    
+    
+# needs a directory to download it to
+def download_epileptologie(DIR, output=False):
+    
+    # directory url
+    front_url = 'http://epileptologie-bonn.de/cms/front_content.php?idcat=193&lang=3&changelang=3'
+    dir_url = 'http://epileptologie-bonn.de/cms'
+
+    hrefs_dir_list = find_files(front_url)
+    
+    # for each link in the directory
+    for link in hrefs_dir_list:
+        # download the files outside of participant folders we want
+        if re.findall('zip', str(link)):
+            # if the file doesnt already exist in the directory
+            if not os.path.exists(os.path.join(DIR, link)):
+                download_file(dir_url+'/'+str(link), DIR, output)
+                zip_file_name = link.split('/')[-1]
+                zip_ref = zipfile.ZipFile(os.path.join(DIR, zip_file_name), 'r')
+                zip_ref.extractall(os.path.join(DIR, zip_file_name[0]))
+                zip_ref.close()
+                os.remove(os.path.join(DIR, zip_file_name))
+              DOWNLOAD_DIR = "Epileptologie Database"
+
+if not os.path.exists(DOWNLOAD_DIR):
+  os.makedirs(DOWNLOAD_DIR)
+  download_epileptologie(DOWNLOAD_DIR, output=True)
+
+else:
+  print("Already Downloaded")
+  # get folder lists
+EPIL_dir_file_list = file_list(os.path.join(DOWNLOAD_DIR, '*'), output=True)
+epil_baseline_file = os.path.join(EPIL_dir_file_list[0], 'F060.txt')
+epil_seizure_file = os.path.join(EPIL_dir_file_list[3], 'S033.txt')
+import pandas as pd     # dataframes
+import re
+
+def data_load(file_path, output=False):
+
+    # read in the datafile
+    data = pd.read_csv(file_path,                 # file in
+                       header=None,               # no column names at top of file
+                       dtype=float)               # read data as 'floating points' (e.g. 1.0)
+
+    if output:
+        print(color.BOLD+color.UNDERLINE+'\n'+re.findall('\w\d+',file_path)[0]+color.END)
+        # Output detailed information on the data
+        print(color.BOLD+'\nData Information'+color.END)
+        data.info()
+
+        # Output first 5 rows and columns
+        print(color.BOLD+'\nDataframe Head'+color.END)
+        display(data.head())
+        
+    return data
+        
+
+epil_baseline_df = data_load(epil_baseline_file, output=True)
+epil_seizure_df = data_load(epil_seizure_file, output=True)
+mport mne 
+
+channel_name= ['CZ']def mne_object(data, info, output=False):
+    data = data.apply(lambda x: x*1e-6)
+    # transpose the data
+    data_T = data.transpose()
+    # create raw mne object
+    raw = mne.io.RawArray(data_T, info)
+    
+    return raw
+
+epil_baseline_mne = mne_object(epil_baseline_df, info, output=True)
+epil_seizure_mne = mne_object(epil_seizure_df, info)
+plot_kwargs = {
+    'scalings': dict(eeg=20e-4),   # zooms the plot out
+    'highpass': 0.53,              # filters out low frequencies
+    'lowpass': 40.,                # filters out high frequencies
+    'n_channels': 1,               # just plot the one channel
+    'duration': 24                 # number of seconds to plot
+}
+
+print(color.BOLD+color.UNDERLINE+"Inter-Ictal"+color.END)
+epil_baseline_mne.plot(**plot_kwargs)
+print(color.BOLD+color.UNDERLINE+"Ictal"+color.END)
+epil_seizure_mne.plot(**plot_kwargs);
+channel_type = ['eeg']
+sample_rate = 173.61 # in hz
+
+# create an mne info file with meta data about the EEG
+info = mne.create_info(ch_names=channel_name, sfreq=sample_rate, 
+                       ch_types=channel_type)
+
+# show the info file
+display(info)
+import random
+import matplotlib.pyplot as plt
+from scipy import signal
+
+for directory in EPIL_dir_file_list:
+  #if re.findall('N|F|S',directory[-1]):
+  # make a list of all the files in the directory
+  files = file_list(os.path.join(directory, '*'))
+  # randomly select 9 files from the list
+  sampled_files = random.sample(files, 9)
+
+
+  fig, axs = plt.subplots(3, 3, sharex=True, sharey=True)
+  x=0
+  y=0
+  for file in sampled_files:
+
+      # read in the datafile
+      data = pd.read_csv(file,                      # file in
+                          header=None,               # no column names at top of file
+                          dtype=float)               # read data as 'floating points' (e.g. 1.0)
+
+      # filter the data
+      b, a = signal.butter(4, [1/(sample_rate/2), 30/(sample_rate/2)], 'bandpass', analog=False)
+      filt_data = signal.filtfilt(b, a, data.T).T
+      
+      axs[x, y].plot(filt_data)
+      axs[x, y].set_title(re.findall('\w\d+', file)[0], pad =-15)
+      # plot all of them on the same scale
+      axs[x, y].set_ylim([-2100, 2100])
+
+      x+=1
+
+      if x == 3:
+          y +=1
+          x=0
+        # add a big axes, hide frame
+  fig.add_subplot(111, frameon=False)
+  # hide tick and tick label of the big axes
+  plt.tick_params(labelcolor='none', top=False, bottom=False, left=False, right=False)
+  plt.grid(False)
+  plt.xlabel("Datapoints", labelpad =0.5)
+  plt.ylabel("Microvolts (uV)", labelpad =20)
+  plt.subplots_adjust(wspace=0.1, hspace=0.1)    
+
+  if directory[-1] == 'N':
+      plt.title('Inter-ictal: Opposite Hippocampus')
+
+  elif directory[-1] == 'F':
+      plt.title('Inter-ictal: Epileptogenic Zone')
+
+  elif directory[-1] == 'S':
+      plt.title('Ictal: Epileptogenic Zone')
+  
+  elif directory[-1] == 'Z':
+      plt.title('Surface EEG: Eyes Open')
+  
+  elif directory[-1] == 'O':
+      plt.title('Surface EEG: Eyes Closed')
+
+  plt.show()
+  from getpass import getpass
+import os
+
+user = getpass('Kaggle Username: ')
+key = getpass('Kaggle API key: ')
+
+if '.kaggle' not in os.listdir('/root'):
+    !mkdir ~/.kaggle
+!touch /root/.kaggle/kaggle.json
+!chmod 666 /root/.kaggle/kaggle.json
+with open('/root/.kaggle/kaggle.json', 'w') as f:
+    f.write('{"username":"%s","key":"%s"}' % (user, key))
+!chmod 600 /root/.kaggle/kaggle.json
+if not os.path.exists('clips.tar.gz'):
+  !kaggle competitions download -c seizure-detection
+  %%time
+
+if not os.path.exists("Volumes"):
+  !tar xvzf clips.tar.gz Volumes/Seagate/seizure_detection/competition_data/clips/Patient_1/
+  upenn_ictal_list = []
+upenn_interictal_list = []
+
+# General data directory
+UPENN_P1_DATA_DIR = os.path.join(os.getcwd(), 'Volumes', 'Seagate', 
+                            'seizure_detection', 'competition_data', 
+                            'clips', 'Patient_1')
+# get folder lists
+upenn_P1_file_list = file_list(os.path.join(UPENN_P1_DATA_DIR, '*'), output=False)
+
+for file in upenn_P1_file_list:
+  if re.findall('interictal', file):
+    upenn_interictal_list.append(file)
+  elif re.findall('ictal', file):
+    upenn_ictal_list.append(file)
+
+upenn_seizure_file = upenn_ictal_list[1]
+upenn_baseline_file = upenn_interictal_list[1]
+from scipy.io import loadmat
+
+mat = loadmat(upenn_seizure_file)
+mat
+import numpy as np
+import matplotlib.pyplot as plt
+import pandas as pd
+
+def mat_to_df(file_path, output = False):
+  mat = loadmat(file_path)    # load mat-file
+
+  data = mat['data']          # variable in mat file
+  channels = mat['channels']  # dtypes of structures are "unsized objects"
+  freq = mat['freq'][0]
+
+  channels_list = []
+  for channel_array in channels[0][0]:
+    channels_list.append(channel_array[0])
+
+  df = pd.DataFrame(data,
+                    index=channels_list)
+
+  df = df.T
+
+  # remove columns that do not change value
+  df = df.loc[:, (df != df.iloc[0]).any()]
+
+  if output:
+    display(df.head())
+
+  return df, freq
+print(color.BOLD+color.UNDERLINE+'Ictal'+color.END)
+upenn_seizure_df, upenn_seizure_freq = mat_to_df(upenn_seizure_file, output=True)
+print()
+print(color.BOLD+color.UNDERLINE+'Interictal'+color.END)
+upenn_baseline_df, upenn_baseline_freq = mat_to_df(upenn_baseline_file, output=True)
+# set mne to only output warnings
+mne.set_log_level('WARNING')
+
+def mne_object(data, freq):
+  # create an mne info file with meta data about the EEG
+  info = mne.create_info(ch_names=list(data.columns), 
+                         sfreq=freq, 
+                         ch_types=['eeg']*data.shape[-1])
+  
+  # data needs to be in volts rather than in microvolts
+  data = data.apply(lambda x: x*1e-6)
+  # transpose the data
+  data_T = data.transpose()
+  
+  # create raw mne object
+  raw = mne.io.RawArray(data_T, info)
+
+  return raw
+
+
+plot_kwargs = {
+    'scalings': dict(eeg=20e-5),   # zooms the plot out
+    'highpass': 0.5,              # filters out low frequencies
+    'lowpass': 70.,                # filters out high frequencies
+    'show_scrollbars': False,
+    'show': True
+}
+
+print(color.BOLD+color.UNDERLINE+'Interictal'+color.END)
+upenn_baseline_mne = mne_object(upenn_baseline_df, upenn_baseline_freq)
+upenn_baseline_mne.plot(**plot_kwargs);
+print()
+print(color.BOLD+color.UNDERLINE+'Ictal'+color.END)
+upenn_seizure_mne = mne_object(upenn_seizure_df, upenn_seizure_freq)
+upenn_seizure_mne.plot(**plot_kwargs)
+from scipy import signal
+
+# set mne to only output warnings
+mne.set_log_level('WARNING')
+
+for i, sampled_files in enumerate([random.sample(upenn_interictal_list, 1), 
+                                   random.sample(upenn_ictal_list, 1)]):
+
+  if i == 0:
+    print(color.BOLD+color.UNDERLINE+'Ictal'+color.END)
+  else:
+    print(color.BOLD+color.UNDERLINE+'Interictal'+color.END)
+  for file in sampled_files:
+      upenn_df, upenn_freq = mat_to_df(file)
+      upenn_mne = mne_object(upenn_df, upenn_freq)
+      upenn_mne.plot(**plot_kwargs)
+    import wfdb 
+
+dbs = wfdb.get_dbs()
+
+records_list = wfdb.io.get_record_list('chbmit', records='all')
+records_list[:5]
+part_codes = sorted(list(set([record.split('/')[0] for record in records_list])))
+part_codes
+import os
+from urllib.request import urlretrieve
+
+def get_content(part_code):
+  url = "https://physionet.org/physiobank/database/chbmit/"+part_code+'/'+part_code+'-summary.txt'
+  filename = "./chbmit.txt"
+
+  urlretrieve(url,filename)
+
+  # read the file into a list
+  with open(filename, encoding='UTF-8') as f:
+      # read all the document into a list of strings (each line a new string)
+      content = f.readlines()
+      os.remove(filename)
+
+  return content
+
+get_content(part_codes[0])
+import re
+part_info_dict = {}
+
+def info_dict(content):
+  
+  line_nos=len(content)
+  line_no=1
+
+  channels = []
+  file_name = []
+  file_info_dict={}
+
+  for line in content:
+
+    # if there is Channel in the line...
+    if re.findall('Channel \d+', line):
+      # split the line into channel number and channel reference
+      channel = line.split(': ')
+      # get the channel reference and remove any new lines
+      channel = channel[-1].replace("\n", "")
+      # put into the channel list
+      channels.append(channel)
+
+    # if the line is the file name
+    elif re.findall('File Name', line):
+      # if there is already a file_name
+      if file_name:
+        # flush the current file info to it
+        part_info_dict[file_name] = file_info_dict
+
+      # get the file name
+      file_name = re.findall('\w+\d+_\d+|\w+\d+\w+_\d+', line)[0]
+
+      file_info_dict = {}
+      # put the channel list in the file info dict and remove duplicates
+      file_info_dict['Channels'] = list(set(channels))
+      # reset the rest of the options
+      file_info_dict['Start Time'] = ''
+      file_info_dict['End Time'] = ''
+      file_info_dict['Seizures Window'] = []
+
+    # if the line is about the file start time
+    elif re.findall('File Start Time', line):
+      # get the start time
+      file_info_dict['Start Time'] = re.findall('\d+:\d+:\d+', line)[0]
+
+    # if the line is about the file end time
+    elif re.findall('File End Time', line):
+      # get the start time
+      file_info_dict['End Time'] = re.findall('\d+:\d+:\d+', line)[0]
+
+    elif re.findall('Seizure Start Time|Seizure End Time|Seizure \d+ Start Time|Seizure \d+ End Time', line):
+      file_info_dict['Seizures Window'].append(int(re.findall('\d+', line)[-1]))
+
+    # if last line in the list...
+    if line_no == line_nos:
+      # flush the file info to it
+      part_info_dict[file_name] = file_info_dict
+
+    line_no+=1
+    
+        
+for part_code in part_codes:
+  content = get_content(part_code)
+  info_dict(content)
+
+
+print(color.BOLD+color.UNDERLINE+'part_info_dict'+color.END)
+display(part_info_dict['chb01_18'])
+print(color.UNDERLINE+'\nPart Keys'+color.END)
+print(part_info_dict[list(part_info_dict.keys())[0]].keys())
+import pandas as pd     # dataframes
+import re
+
+all_channels = []
+
+for key in part_info_dict.keys():
+    all_channels.extend(part_info_dict[key]['Channels'])
+    
+# turn the list into a pandas series
+all_channels = pd.Series(all_channels)
+
+# count how many times the channels appear in each participant
+channel_counts = all_channels.value_counts()
+channel_counts
+threshold = len(part_info_dict.keys())
+channel_keeps = list(channel_counts[channel_counts >= threshold].index)
+channel_keeps
+EXAMPLE_FILE = records_list[17]
+EXAMPLE_ID = EXAMPLE_FILE.split('/')[1].split('.')[0]
+EXAMPLE_ID
+%%time
+import pandas as pd
+import numpy as np
+import pyedflib
+
+def data_load(file, selected_channels=[]):
+
+  try: 
+    url = "https://physionet.org/physiobank/database/chbmit/"+file
+    filename = "./chbmit.edf"
+
+    urlretrieve(url,filename)
+    # use the reader to get an EdfReader file
+    f = pyedflib.EdfReader(filename)
+    os.remove(filename)
+    
+    # get a list of the EEG channels
+    if len(selected_channels) == 0:
+      selected_channels = f.getSignalLabels()
+
+    # get the names of the signals
+    channel_names = f.getSignalLabels()
+    # get the sampling frequencies of each signal
+    channel_freq = f.getSampleFrequencies()
+
+    # make an empty file of 0's
+    sigbufs = np.zeros((f.getNSamples()[0],len(selected_channels)))
+    # for each of the channels in the selected channels
+    for i, channel in enumerate(selected_channels):
+      # add the channel data into the array
+      sigbufs[:, i] = f.readSignal(channel_names.index(channel))
+    
+    # turn to a pandas df and save a little space
+    df = pd.DataFrame(sigbufs, columns = selected_channels).astype('float32')
+    
+    # get equally increasing numbers upto the length of the data depending
+    # on the length of the data divided by the sampling frequency
+    index_increase = np.linspace(0,
+                                 len(df)/channel_freq[0],
+                                 len(df), endpoint=False)
+
+    # round these to the lowest nearest decimal to get the seconds
+    seconds = np.floor(index_increase).astype('uint16')
+
+    # make a column the timestamp
+    df['Time'] = seconds
+
+    # make the time stamp the index
+    df = df.set_index('Time')
+
+    # name the columns as channel
+    df.columns.name = 'Channel'
+    return df, channel_freq[0]
+
+  except:
+    OSError
+    return pd.DataFrame(), None
+
+
+raw_data, freq = data_load(EXAMPLE_FILE, channel_keeps)
+display(raw_data.head())
+def mne_object(data, freq, events = None):
+  # create an mne info file with meta data about the EEG
+  info = mne.create_info(ch_names=list(data.columns), 
+                         sfreq=freq, 
+                         ch_types=['eeg']*data.shape[-1])
+  
+  # data needs to be in volts rather than in microvolts
+  data = data.apply(lambda x: x*1e-6)
+  # transpose the data
+  data_T = data.transpose()
+  
+  # create raw mne object
+  raw = mne.io.RawArray(data_T, info)
+
+  if events:
+    start_times = np.array(events[::2])
+    end_times = np.array(events[1::2])
+    anno_length = end_times-start_times
+    event_name = np.array(['Ictal']*len(anno_length))
+
+    raw.set_annotations(mne.Annotations(start_times,
+                                      anno_length,
+                                      event_name))
+
+  return raw
+
+mne_data = mne_object(raw_data, freq, part_info_dict[EXAMPLE_ID]['Seizures Window'])
+
+
+mne_data.plot(start = 50, 
+              duration = 30, **plot_kwargs);
+
+seiz_start_time = part_info_dict[EXAMPLE_ID]['Seizures Window'][0]
+mne_data.plot(start = seiz_start_time, 
+              duration = 30, **plot_kwargs);
+replace_dict = {}
+drop_list = []
+# for the channel names in the data...
+for channel_name in mne_data.info['ch_names']:
+    # get the name to change too
+    name_change = re.findall('\w+',channel_name)[0].title()
+    # check if it is already in the change list
+    if name_change in list(replace_dict.values()):
+        drop_list.append(channel_name)
+    else:
+        # if its not already there get the origional name and what we want to 
+        # change it to
+        replace_dict[channel_name] = name_change
+
+# drop the ones that would be repeats
+mne_data.drop_channels(drop_list)
+# rename the channels
+mne_data.rename_channels(replace_dict)
+# set the standard montage
+mne_data.set_montage('standard_1020')
+mne_data.plot_sensors(kind='topomap', show_names=True, to_sphere=True);
+fig = mne_data.plot_sensors(kind='3d', show_names=True, show=False)
+fig = fig.gca().view_init(azim=70, elev=15)
+plt.show()
+from scipy import signal
+def ave_freq(data):
+    win = 4 * freq
+    freqs, psd = signal.welch(data, freq, nperseg=win, scaling='spectrum')
+    #print(freqs[4:160])
+    return psd[:,4:160].mean(1)
+
+inter_array = mne_data[:, 50*freq:80*freq][0]
+ictal_array = mne_data[:, (seiz_start_time*freq):(seiz_start_time*freq)+30*freq][0]
+topo_df = pd.DataFrame([ave_freq(inter_array),ave_freq(ictal_array)], index=['inter', 'ictal'])
+
+fig, axs = plt.subplots(nrows=1, ncols=2, figsize=(15,5))
+
+axs = axs.flatten()
+for i, data_class in enumerate(topo_df.T):
+    topo, cn = mne.viz.plot_topomap(topo_df.loc[data_class],
+                                    mne_data.info,
+                                    show=False,
+                                    sensors=False,
+                                    names=mne_data.info['ch_names'], 
+                                    show_names=True,
+                                    axes = axs[i],
+                                    vmin = topo_df.values.min(),
+                                    vmax = topo_df.values.max())
+    axs[i].set_title(data_class)
+    
+fig.show()
+files_with_seizures = []
+for file_id in part_info_dict:
+    # if there is something in the seizure window
+    if part_info_dict[file_id]['Seizures Window']:
+        files_with_seizures.append(file_id)
+
+sampled_file = random.sample(files_with_seizures, 1)[0]
+sampled_file_path = sampled_file.split('_')[0]+'/'+sampled_file+'.edf'
+raw_data, freq = data_load(sampled_file_path, channel_keeps)
+mne_data = mne_object(raw_data, freq, part_info_dict[sampled_file]['Seizures Window'])
+
+print(color.BOLD+color.UNDERLINE+sampled_file+color.END)
+
+mne_data.plot(start = 50, 
+              duration = 30, **plot_kwargs);
+
+mne_data.plot(start = part_info_dict[sampled_file]['Seizures Window'][0], 
+              duration = 30, **plot_kwargs);
+def find_files(url, headers):
+    # get a soup of the directory url
+    soup = BeautifulSoup(requests.get(url, auth=(headers['user'], headers['passwd'])).text, 
+                         features="html.parser")
+    # make a list of all the links in the url
+    hrefs_list = []
+    for link in soup.find_all('a'):
+        hrefs_list.append(link.get('href'))
+
+    return hrefs_list 
+    
+def download_file(download_file_url, file_path, headers, output=False):
+    if output:
+        # print it is downloading
+        print('Downloading: '+ download_file_url)
+    # download the file to the directory
+    r = requests.get(download_file_url, auth=(headers['user'], headers['passwd']))
+    with open(file_path, 'wb') as f:
+      f.write(r.content)
+
+# needs a directory to download it to
+def download_TUH(DIR, headers, sub_dir, output=False):
+    
+    # directory url
+    dir_url = 'https://www.isip.piconepress.com/projects/tuh_eeg/downloads/tuh_eeg_seizure/v1.5.0/'+sub_dir
+
+    hrefs_dir_list = find_files(dir_url, headers)
+    
+    # for each link in the directory
+    for link in hrefs_dir_list:
+        # download the files outside of participant folders we want
+        if re.findall('.xlsx|\.edf|\.tse(?!_)', str(link)):
+            # if the file doesnt already exist in the directory
+            if not os.path.exists(os.path.join(DIR, link)):
+                download_file(dir_url+'/'+str(link), DIR+'/'+str(link), headers, output)
+              from getpass import getpass
+import os
+import sys
+import os
+from bs4 import BeautifulSoup
+import requests
+import re
+import wget
+import zipfile
+
+DOWNLOAD_DIR = "TUH Database"
+
+if not os.path.exists(DOWNLOAD_DIR):
+  os.makedirs(DOWNLOAD_DIR)
+
+user = getpass('TUH Username: ')
+key = getpass('TUH Password: ')
+auth_dict = {'user': user, 'passwd': key}
+
+download_TUH(DOWNLOAD_DIR, auth_dict, '_DOCS', output=True)
+import pandas as pd
+seiz_types_path = '/content/TUH Database/seizures_types_v01.xlsx'
+seiz_types = pd.read_excel(seiz_types_path)
+
+seiz_types = seiz_types.set_index('Class Code')
+display(seiz_types)
+seiz_info_path = '/content/TUH Database/seizures_v32r.xlsx'
+train_info = pd.read_excel(seiz_info_path, 'train')
+
+train_seiz_type = train_info.iloc[1:12,26:30]
+train_seiz_type.columns = ['Class Code', 'Events', 'Freq.', 'Cum.']
+train_seiz_type = train_seiz_type.set_index('Class Code')
+train_seiz_type.join(seiz_types) 
+# ----------------
+# Descriptive Keys
+# ----------------
+train_type_key = train_info.iloc[24:43,16:21]
+train_type_key.columns = ['EEG Type', 'EEG SubType', 'Rooms', 'REMOVE', 'Description']
+train_type_key = train_type_key.drop(['Rooms','REMOVE'], axis = 1)
+train_type_key['EEG Type'] = train_type_key['EEG Type'].ffill()
+train_type_key = train_type_key.set_index('EEG Type')
+
+# ------------
+# Type Summary
+# ------------
+train_type_summary = train_info.iloc[1:7,16:20]
+train_type_summary.columns = ['EEG Type', 'Sessions', 'Freq.', 'Cum.']
+train_type_summary = train_type_summary.set_index('EEG Type')
+
+desc = train_type_key[train_type_key.isnull().any(axis=1)].iloc[:-1]
+train_type_summary = train_type_summary.join(desc)
+train_type_summary = train_type_summary.drop('EEG SubType', axis=1)
+
+train_type_summary[['Description','Sessions', 'Freq.', 'Cum.']]
+# ---------------
+# SubType Summary
+# ---------------
+
+train_loc_summary = train_info.iloc[1:16,21:25]
+train_loc_summary.columns = ['EEG SubType', 'Sessions', 'Freq.', 'Cum.']
+train_loc_summary = train_loc_summary.set_index('EEG SubType')
+
+desc = train_type_key.dropna()
+desc = desc.reset_index(drop=True)
+desc = desc.set_index('EEG SubType')
+
+train_loc_summary = train_loc_summary.join(desc)
+train_loc_summary[['Description','Sessions', 'Freq.', 'Cum.']]
+train_class_summary = train_info.iloc[9:12,16:20]
+train_class_summary.columns = ['Normal Classification', 'Sessions', 'Freq.', 'Cum.']
+train_class_summary = train_class_summary.set_index('Normal Classification')
+train_class_summary
+# just want the info per file here
+file_info = train_info.iloc[1:6101,1:15]
+# cleans some of the names
+file_info_cols = ['File No.', 'Patient', 'Session', 'File', 
+                       'EEG Type', 'EEG SubType', 'LTM or Routine', 
+                       'Normal/Abnormal', 'No. Seizures File', 
+                       'No. Seizures/Session', 'Filename', 'Seizure Start', 
+                       'Seizure Stop', 'Seizure Type']
+file_info.columns = file_info_cols
+
+# we forward fill as there are gaps in the excel file to represent the info 
+# is the same as above (apart from in the filename, seizure start, seizure stop 
+# and seizure type columns)
+for col_name in file_info.columns[:-4]:
+  file_info[col_name] = file_info[col_name].ffill()
+
+# patient ID is an integer rather than float
+file_info['Patient'] = file_info['Patient'].astype(int)
+
+file_info.head()
+# our example events file picked from the events filename
+SEIZURE_EVENTS_FILE = file_info[file_info['No. Seizures File']>0]['Filename'].iloc[20]
+
+# we use the above to get the file directory this file is in
+example_file_dir = '/'.join(SEIZURE_EVENTS_FILE.split('/')[1:-1])
+
+# this will download all edf and event files for the selected patient
+download_TUH(DOWNLOAD_DIR, auth_dict, example_file_dir, output=True)
+%%time
+import pandas as pd
+import numpy as np
+import pyedflib
+
+def data_load(data_file, selected_channels=[]):
+
+    try:
+        # use the reader to get an EdfReader file
+        f = pyedflib.EdfReader(data_file)
+
+        # get the names of the signals
+        channel_names = f.getSignalLabels()
+        # get the sampling frequencies of each signal
+        channel_freq = f.getSampleFrequencies()
+        
+        # get a list of the EEG channels
+        if len(selected_channels) == 0:
+            selected_channels = channel_names
+
+        # make an empty file of 0's
+        sigbufs = np.zeros((f.getNSamples()[0],len(selected_channels)))
+        # for each of the channels in the selected channels
+        for i, channel in enumerate(selected_channels):
+            try:
+              # add the channel data into the array
+              sigbufs[:, i] = f.readSignal(channel_names.index(channel))
+            
+            except:
+              ValueError
+              # This happens if the sampling rate of that channel is 
+              # different to the others.
+              # For simplicity, in this case we just make it na.
+              sigbufs[:, i] = np.nan
+
+
+        # turn to a pandas df and save a little space
+        df = pd.DataFrame(sigbufs, columns = selected_channels)#.astype('float32')
+
+        # get equally increasing numbers upto the length of the data depending
+        # on the length of the data divided by the sampling frequency
+        index_increase = np.linspace(0,
+                                      len(df)/channel_freq[0],
+                                      len(df), endpoint=False)
+
+        # round these to the lowest nearest decimal to get the seconds
+        #seconds = np.floor(index_increase).astype('uint16')
+
+        seconds = index_increase
+        
+        # make a column the timestamp
+        df['Time'] = seconds
+
+        # make the time stamp the index
+        df = df.set_index('Time')
+
+        # name the columns as channel
+        df.columns.name = 'Channel'
+
+        return df, channel_freq[0]
+
+    except:
+        OSError
+        return pd.DataFrame(), None
+
+seiz_edf_name = SEIZURE_EVENTS_FILE.split('/')[-1][:-3]+'edf'
+seiz_data, seiz_freq = data_load(DOWNLOAD_DIR+'/'+seiz_edf_name)
+display(seiz_data.shape)
+def mne_object(data, freq, events_tse = pd.DataFrame()):
+  # create an mne info file with meta data about the EEG
+  info = mne.create_info(ch_names=list(data.columns), 
+                         sfreq=freq, 
+                         ch_types=['eeg']*data.shape[-1])
+  
+  # data needs to be in volts rather than in microvolts
+  data = data.apply(lambda x: x*1e-6)
+  # transpose the data
+  data_T = data.transpose()
+  
+  # create raw mne object
+  raw = mne.io.RawArray(data_T, info)
+
+  if not events_tse.empty:
+
+    raw.set_annotations(mne.Annotations(events_tse['Start'],
+                                          events_tse['End'] - events_tse['Start'],
+                                          events_tse['Code']))
+
+  return raw
+
+seiz_events_name = SEIZURE_EVENTS_FILE.split('/')[-1]
+events_tse = pd.read_csv(DOWNLOAD_DIR+'/'+seiz_events_name, 
+                             skiprows=1,
+                             sep = ' ',
+                             header=None,
+                             names =['Start', 'End', 'Code', 'Certainty'])
+
+tuh_mne = mne_object(seiz_data, seiz_freq, events_tse)
+for class_code in events_tse['Code'].unique():
+    code_events = events_tse.where(events_tse['Code'] == class_code).dropna()
+    tuh_mne.plot(start = code_events.sample(random_state = 0)['Start'].values[0], 
+                    duration = 30, **plot_kwargs)
+  replace_dict = {}
+drop_list = []
+# for the channel names in the data...
+for channel_name in tuh_mne.info['ch_names']:
+    name_change=None
+    if re.findall('\w+',channel_name)[0] == 'EEG':
+        if not re.findall('ROC|LOC|EKG|26|27|28|29|30|T1|T2',channel_name):
+            name_change = re.findall('\w+',channel_name)[1].title()
+        else:
+            drop_list.append(channel_name)
+    else:
+        drop_list.append(channel_name)
+    
+    if name_change:
+        # check if it is already in the change list
+        if name_change in list(replace_dict.values()):
+            drop_list.append(channel_name)
+        else:
+            # if its not already there get the origional name and what we want to 
+            # change it to
+            replace_dict[channel_name] = name_change
+
+# drop the ones that would be repeats
+tuh_mne.drop_channels(drop_list)
+# rename the channels
+tuh_mne.rename_channels(replace_dict)
+# set the standard montage
+tuh_mne.set_montage('standard_1020')
+
+tuh_mne.plot_sensors(kind='topomap', show_names=True, to_sphere=True);
+fig = tuh_mne.plot_sensors(kind='3d', show_names=True, show=False)
+fig = fig.gca().view_init(azim=70, elev=15)
+plt.show()
+import math
+
+# this just downloads the file we want
+def download_TUH_file(DIR, headers, file, output=False):
+    # directory url
+    dir_url = 'https://www.isip.piconepress.com/projects/tuh_eeg/downloads/tuh_eeg_seizure/v1.5.0/'+file
+    download_file(dir_url, DIR+'/'+file.split('/')[-1], headers, output)
+
+for seiz_type in file_info['Seizure Type'].unique():
+    try:
+        math.isnan(seiz_type)
+    except:
+        seiz_type_files = file_info[file_info['Seizure Type']==seiz_type]['Filename']
+        seiz_type_file = seiz_type_files.sample().values[0]
+        print(color.BOLD+color.UNDERLINE+seiz_type_file.split('/')[-1][:-3]+color.END)
+
+        # this will download the edf and associated event file
+        download_TUH_file(DOWNLOAD_DIR, auth_dict, seiz_type_file, output=True)
+        download_TUH_file(DOWNLOAD_DIR, auth_dict, seiz_type_file[:-3]+'edf', output=True)
+
+        # get file pats
+        seiz_edf_name = seiz_type_file.split('/')[-1][:-3]+'edf'
+        seiz_tse_name = DOWNLOAD_DIR+'/'+seiz_type_file.split('/')[-1]
+
+        seiz_data, seiz_freq = data_load(DOWNLOAD_DIR+'/'+seiz_edf_name)
+        events_tse = pd.read_csv(seiz_tse_name, skiprows=1, sep = ' ', header=None,
+                                 names =['Start', 'End', 'Code', 'Certainty'])
+
+        tuh_mne = mne_object(seiz_data, seiz_freq, events_tse)
+
+        for class_code in events_tse['Code'].unique():
+            code_events = events_tse.where(events_tse['Code'] == class_code).dropna()
+            tuh_mne.plot(start = code_events.sample(random_state = 0)['Start'].values[0], 
+                            duration = 30, **plot_kwargs)
+          
