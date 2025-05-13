@@ -100,4 +100,64 @@ The data contains 198 seizures of various types (focal, lateral, and generalised
 
 This dataset is one of the most prominent datasets in the literature, as it provides long, continuous recordings for each patient, allowing for both patient specific and patient general models to be developed and tested.
 
+<img width="368" alt="image" src="https://github.com/user-attachments/assets/29ee488b-147d-40b1-81cd-8d12e78483a8" />
+
+NOTE
+
+You may have noticed that in the table above it actually only totals to 185 seizures. Thats because the method I use to load the data into Python does not work on a select few files. This reduces the number of seizure events from 40 to 27 in patient 12 by not including files 27, 28, and 29.
+
+<img width="1051" alt="image" src="https://github.com/user-attachments/assets/8450d94d-4e77-4ae8-9f4e-1d11e5a33314" />
+
+<img width="272" alt="image" src="https://github.com/user-attachments/assets/88124eae-2b61-4f8f-89fb-f9beb443e9f3" />
+
+EEG has more than just temporal (changes over time) information, it has spatial as well. To demonstate, lets look at how the signal changes over the head before and during a seizure.
+
+We will go into different ways of breaking a signal down in more detail in the next notebook, so don't worry if you are not familiar with the welch method I use here. The basic take away is that there is generally more going on!
+
+NOTES
+
+if you are familiar with the welch method we are just looking at the average power spectral density between 1-40Hz
+
+<img width="293" alt="image" src="https://github.com/user-attachments/assets/76e72039-4802-4c45-8e49-9f32d35df183" />
+
+<img width="524" alt="image" src="https://github.com/user-attachments/assets/7e901fe3-14e1-4da2-b41d-5d771b3f5300" />
+
+Now, as we have done with the other datasets, lets randomly plot different parts of the data to see more examples.
+
+<img width="280" alt="image" src="https://github.com/user-attachments/assets/aaddcad4-0c27-43bc-948a-e419bb4e73b2" />
+
+NEDC TUH EEG Seizure corpus
+The full TUH EEG corpus is the world’s largest publicly available corpus of clinical EEG data. The corpus contains 15,757 hours (56,726,510 secs) of EEG recordings from 13,539 patients.
+
+This tutorial uses a subset of the TUH corpus, the TUH EEG Seizure Corpus (v1.5.0), which has been manually annotated and separated into training and test sets, as well as split up into sessions with and without seizures1. The full training set contains 592 patients, 202 of which have seizures, for a total of 2370 seizures categorised into 9 types. The duration of all the seizures is 46.7 hours (168139.2295 secs) out of the full 752.3 hours (2708284 secs) of available EEG data. The test data is also large, with a total of 50 patients, 39 with seizures, 685 seizures (16.95hrs; 61036.8393 secs) and 170.34 hours (613232 secs) of data.
+
+Signals are typically recorded at [INSERT HZ] using [X] channels in a 10/20 channel configuration. For each session, the electrodes are either referenced to the average or linked ears montage.
+
+<img width="759" alt="image" src="https://github.com/user-attachments/assets/9e8f9080-9af2-49cb-a6e9-0de7d4dd8b32" />
+
+Lets have a look at the training set first. This page has lots of parts of info in the same exel file so we need to break it up.
+
+First lets look at some overall summaries of the training set found here, starting with the number of seizures.
+
+<img width="862" alt="image" src="https://github.com/user-attachments/assets/95daa645-147d-4bfb-8bbb-dfe29cebb7b2" />
+
+<img width="330" alt="image" src="https://github.com/user-attachments/assets/6f93a820-2e9c-4780-add0-19b9596af872" />
+
+Each of the above EEG Types have a subtype of where they were recorded
+
+<img width="434" alt="image" src="https://github.com/user-attachments/assets/9637a844-af86-41d7-91f1-98cf84b09f72" />
+
+<img width="305" alt="image" src="https://github.com/user-attachments/assets/a99915be-e2ca-4358-8344-412fd7f6f0c3" />
+
+<img width="290" alt="image" src="https://github.com/user-attachments/assets/9357c89b-fb8f-4be2-9a39-ccd39e693a75" />
+
+<img width="291" alt="image" src="https://github.com/user-attachments/assets/9803066c-c718-42de-922b-eff27754d5f4" />
+
+<img width="291" alt="image" src="https://github.com/user-attachments/assets/cde52155-cdaa-4b11-bbc8-baa71f6401e1" />
+
+
+
+
+
+
 
