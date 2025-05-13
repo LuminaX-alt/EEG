@@ -55,4 +55,49 @@ If you used a sedative, it takes time for the medicine to begin to wear off. Arr
 
 <img width="462" alt="image" src="https://github.com/user-attachments/assets/05c685a0-c56e-4ee0-91c9-2ffdce32c4fe" />
 
+Now here by I am attaching the images of the throughput of the model while training 
+
+
+<img width="261" alt="image" src="https://github.com/user-attachments/assets/3a8c8207-445e-4001-b52e-6868a17b7183" />
+
+
+<img width="378" alt="image" src="https://github.com/user-attachments/assets/7168b7b0-eba7-4ac4-8e51-19906bf6af1a" />
+
+
+<img width="510" alt="image" src="https://github.com/user-attachments/assets/9ea83b56-24cb-47d3-ac96-a23c2779d283" />
+
+
+<img width="467" alt="image" src="https://github.com/user-attachments/assets/ed1f0ae5-dce7-4396-9191-b1665de616aa" />
+
+
+here is a lack of global definition of what "normal" EEG looks like; above represented by the Inter-Ictal data1. This is due to EEG changing over the course of a patients life, as well as between levels of cognition (e.g. awake/asleep) or behaviour (e.g. eyes open/closed). A common variation in EEG is found between awake and asleep EEG, where more global waveforms oscillate at slower frequencies across the head. This global activity is inter-dispersed with fast "spikes", which are commonly found in different sleep stages. The variability means EEG alone is rarely sufficient for a clinical diagnosis, with other diagnostic imaging and forms of observation often necessary.
+
+Alike to "normal" EEG, there is a lot of variability found between and within different seizure types. Never-the-less, comparative to pre-seizure background EEG, seizures have the common traits of synchronisation across a few or many EEG channels, a large amplitude, and increased oscillatory activity. Onsets and offsets of seizures are typically abrupt, however variations can occur both between patients as well as between seizures. Patients may also have spiked inter-seizure discharges, which are short bursts of high amplitude, syncronized activity around an epileptic focus1.
+
+<img width="269" alt="image" src="https://github.com/user-attachments/assets/6dd0d2bb-aa53-4125-876c-d505c94a6974" />
+
+UPenn and Mayo Clinic's Seizure Detection Challenge
+Now lets introduce another dataset. This data was origionally a kaggle competition in 20141. The data consists of 1 second ictal and interictal seizures in 4 dogs2 and 8 patients3,4. Recordings were sampleted at 400Hz from 16 intercranial channels in the dogs and at 500Hz or 5kHz from varying numbers and locations of intercranial electrodes in humans. See table below for more information5:
+
+<img width="384" alt="image" src="https://github.com/user-attachments/assets/8143c532-7c17-4066-9bfa-f413a848f3e8" />
+
+<img width="198" alt="image" src="https://github.com/user-attachments/assets/651d528d-c914-4e68-a67d-c94a73115906" />
+
+<img width="691" alt="image" src="https://github.com/user-attachments/assets/4aff0f25-a15a-4701-bf02-85eeb087ec78" />
+
+<img width="1133" alt="image" src="https://github.com/user-attachments/assets/a19db73b-030d-4124-9964-8e3b16e92ada" />
+
+<img width="1225" alt="image" src="https://github.com/user-attachments/assets/8ec13bc8-01b9-440c-b0c2-7a7f701aeff9" />
+
+<img width="272" alt="image" src="https://github.com/user-attachments/assets/b67ebbc5-da96-4e13-852c-550b81cce001" />
+
+<img width="274" alt="image" src="https://github.com/user-attachments/assets/4a384c07-d94a-4f7c-b177-daf1bd40ae10" />
+
+CHB-MIT Scalp EEG Database
+The CHB-MIT dataset1, consists of records from 23 patients; with one case (chb21) taken from the same patient (chb01) 1.5 years later. The dataset was collected by investigators at the Children’s Hospital Boston and Massachusetts Institute of Technology (MIT). The median length of collection was for 36 hours with small gaps between records each hour due to hardware limitations.
+
+The data contains 198 seizures of various types (focal, lateral, and generalised seizures). All signals were recorded at 256 samples per second with most files containing 23 EEG signals positioned using the International 10-20 system (as we will see later).
+
+This dataset is one of the most prominent datasets in the literature, as it provides long, continuous recordings for each patient, allowing for both patient specific and patient general models to be developed and tested.
+
 
